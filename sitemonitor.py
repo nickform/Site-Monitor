@@ -2,11 +2,12 @@
 
 # sample usage: checksites.py eriwen.com nixtutor.com yoursite.org
 
-import pickle, os, sys, logging, time, urllib2, re
+import pickle, os, sys, logging, time, urllib2, re, urlparse
 from optparse import OptionParser, OptionValueError
 from smtplib import SMTP
 from getpass import getuser
 from socket import gethostname
+
 
 def generate_email_alerter(to_addrs, from_addr=None, use_gmail=False,
         username=None, password=None, hostname=None, port=25):
@@ -25,6 +26,7 @@ def generate_email_alerter(to_addrs, from_addr=None, use_gmail=False,
             server = SMTP(hostname, port)
         else:
             server = SMTP()            
+        import pdb; pdb.set_trace()
         server.connect()
     
     if username and password:
@@ -53,7 +55,7 @@ def get_headers(url):
     except:
         return 'Headers unavailable'
 
-def compare_site_status(prev_results, alerter):
+def compare_site_status(prev_results): #, alerter):
     '''Report changed status based on previous results'''
 
     def is_status_changed(url):
@@ -71,7 +73,7 @@ def compare_site_status(prev_results, alerter):
         if url in prev_results and prev_results[url]['status'] != status:
             logging.warning(status)
             # Email status messages
-            alerter(str(get_headers(url)), friendly_status)
+            # alerter(str(get_headers(url)), friendly_status)
         
         # Create dictionary for url if one doesn't exist (first time url was checked)
         if url not in prev_results:
@@ -205,14 +207,14 @@ def main():
     pickledata['meta']['lastcheck'] = time.strftime('%Y-%m-%d %H:%M:%S')
     
     # create an alerter
-    alerter, quiter = generate_email_alerter(options.to_addrs, from_addr=options.from_addr,
-                          use_gmail=options.use_gmail,
-                          username=options.smtp_username, password=options.smtp_password,
-                          hostname=options.smtp_hostname, port=options.smtp_port)
+    #alerter, quitter = generate_email_alerter(options.to_addrs, from_addr=options.from_addr,
+    #                      use_gmail=options.use_gmail,
+    #                      username=options.smtp_username, password=options.smtp_password,
+    #                      hostname=options.smtp_hostname, port=options.smtp_port)
 
     # Check sites only if Internet is_available
     if is_internet_reachable():
-        status_checker = compare_site_status(pickledata, alerter)
+        status_checker = compare_site_status(pickledata) #, alerter)
         map(status_checker, urls)
     else:
         logging.error('Either the world ended or we are not connected to the net.')
@@ -220,7 +222,7 @@ def main():
     # Store results in pickle file
     store_results(pickle_file, pickledata)
 
-    quiter()
+    #quitter()
 
 if __name__ == '__main__':
     # First arg is script name, skip it

@@ -72,7 +72,7 @@ def compare_site_status(prev_results): #, alerter):
         print friendly_status
         if url in prev_results and prev_results[url]['status'] != status:
             logging.warning(status)
-            # Email status messages
+            # Email status messages - commented out by Nick Form
             # alerter(str(get_headers(url)), friendly_status)
         
         # Create dictionary for url if one doesn't exist (first time url was checked)

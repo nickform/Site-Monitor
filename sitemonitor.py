@@ -2,7 +2,7 @@
 
 # sample usage: checksites.py eriwen.com nixtutor.com yoursite.org
 
-import pickle, os, sys, logging, time, urllib2, re, urlparse
+import pickle, os, sys, logging, time, urllib2, re, csv
 from optparse import OptionParser, OptionValueError
 from smtplib import SMTP
 from getpass import getuser
@@ -133,6 +133,18 @@ def get_urls_from_file(filename):
         logging.error('Unable to read %s' % filename)
         return []
 
+def add_extension(filename):
+    if not re.match('^*.csv$', filename):
+        filename = filename + '.csv'
+    return filename
+
+def initialise_file(filename):
+    
+
+def ensure_file_is_initialised(filename):
+    if not os.path.isfile(filename):
+        initialise_file(filename)
+
 def get_command_line_options():
     '''Sets up optparse and command line options'''
     usage = "Usage: %prog [options] url"
@@ -176,20 +188,13 @@ def main():
     (options,args) = get_command_line_options()
     
     # Print out usage if no arguments are present
-    if len(args) == 0 and options.from_file == None:
+    if len(args) != 2:
         print 'Usage:'
-        print "\tPlease specify a url like: www.google.com"
-        print "\tNote: The http:// is not necessary"
-        print 'More Help:'
-        print "\tFor more help use the --help flag"
+        print "\tPlease specify a single url followed by the name of the file to log status to."
+        return
 
-    # If the -f flag is set we get urls from a file, otherwise we get them from the command line.
-    if options.from_file:
-        urls = get_urls_from_file(options.from_file)
-    else:
-        urls = args
-
-    urls = map(normalize_url, urls)
+    url = normalize_url(args[0])
+    statsfile = add_extension(args[1])
 
     # Change logging from WARNING to INFO when logResponseTime option is set
     # so we can log response times as well as status changes.
@@ -202,31 +207,15 @@ def main():
                 format='%(asctime)s %(levelname)s: %(message)s',
                 datefmt='%Y-%m-%d %H:%M:%S')
 
-    # Load previous data
-    pickle_file = 'data.pkl'
-    pickledata = load_old_results(pickle_file)
-        
-    # Add some metadata to pickle
-    pickledata['meta'] = {}    # Intentionally overwrite past metadata
-    pickledata['meta']['lastcheck'] = time.strftime('%Y-%m-%d %H:%M:%S')
-    
-    # create an alerter
-    #alerter, quitter = generate_email_alerter(options.to_addrs, from_addr=options.from_addr,
-    #                      use_gmail=options.use_gmail,
-    #                      username=options.smtp_username, password=options.smtp_password,
-    #                      hostname=options.smtp_hostname, port=options.smtp_port)
-
     # Check sites only if Internet is_available
     if is_internet_reachable():
-        status_checker = compare_site_status(pickledata) #, alerter)
-        map(status_checker, urls)
+        status, elapsedTime, urlfile = check_site_status(url)
+        print status, elapsedTime, urlfile
+        with open(statsfile, 'wb') as csvfile:
+            ensure_file_is_initialised(csvfile)
+            update_file(csvfile, status, elapsedTime)
     else:
         logging.error('Either the world ended or we are not connected to the net.')
-    
-    # Store results in pickle file
-    store_results(pickle_file, pickledata)
-
-    #quitter()
 
 if __name__ == '__main__':
     # First arg is script name, skip it

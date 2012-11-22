@@ -2,11 +2,12 @@
 
 # sample usage: checksites.py eriwen.com nixtutor.com yoursite.org
 
-import pickle, os, sys, logging, time, urllib2, re, csv
+import os, sys, logging, time, urllib2, re, csv, datetime
 from optparse import OptionParser, OptionValueError
 from smtplib import SMTP
 from getpass import getuser
 from socket import gethostname
+from collections import OrderedDict
 
 
 def generate_email_alerter(to_addrs, from_addr=None, use_gmail=False,
@@ -43,10 +44,10 @@ def get_site_status(url):
         urlfile = urllib2.urlopen(url);
         status_code = urlfile.code
         if status_code in (200,302):
-            return 'up', urlfile
+            return 'up'
     except:
         pass
-    return 'down', None
+    return 'down'
 
 def get_headers(url):
     '''Gets all headers from URL request and returns'''
@@ -57,38 +58,13 @@ def get_headers(url):
 
 def check_site_status(url):
     startTime = time.time()
-    status, urlfile = get_site_status(url)
+    status = get_site_status(url)
     endTime = time.time()
     elapsedTime = endTime - startTime
 
     if status != "up": elapsedTime = -1
 
-    return status, elapsedTime, urlfile
-
-
-def compare_site_status(prev_results): #, alerter):
-    '''Report changed status based on previous results'''
-
-    def is_status_changed(url):
-        status, elapsedTime, urlfile = check_site_status(url)
-        
-        friendly_status = '%s is %s. Response time: %s' % (url, status, elapsedTime)
-        print friendly_status
-        if url in prev_results and prev_results[url]['status'] != status:
-            logging.warning(status)
-            # Email status messages - commented out by Nick Form
-            # alerter(str(get_headers(url)), friendly_status)
-        
-        # Create dictionary for url if one doesn't exist (first time url was checked)
-        if url not in prev_results:
-            prev_results[url] = {}
-            
-        # Save results for later pickling and utility use
-        prev_results[url]['status'] = status
-        prev_results[url]['headers'] = None if urlfile == None else urlfile.info().headers 
-        prev_results[url]['rtime'] = elapsedTime
-
-    return is_status_changed
+    return status, elapsedTime
 
 def is_internet_reachable():
     '''Checks Google then Yahoo just in case one is down'''
@@ -97,22 +73,6 @@ def is_internet_reachable():
     if statusGoogle == 'down' and statusYahoo == 'down':
         return False
     return True
-
-def load_old_results(file_path):
-    '''Attempts to load most recent results'''
-    pickledata = {}
-    if os.path.isfile(file_path):
-        picklefile = open(file_path, 'rb')
-        pickledata = pickle.load(picklefile)
-        picklefile.close()
-    return pickledata
-
-def store_results(file_path, data):
-    '''Pickles results to compare on next run'''
-    output = open(file_path, 'wb')
-    pickle.dump(data, output)
-    output.close()
-
 
 def normalize_url(url):
     '''If a url doesn't have a http/https prefix, add http://'''
@@ -134,53 +94,46 @@ def get_urls_from_file(filename):
         return []
 
 def add_extension(filename):
-    if not re.match('^*.csv$', filename):
+    if not re.match('^.*\.csv$', filename):
         filename = filename + '.csv'
     return filename
-
-def initialise_file(filename):
-    
-
-def ensure_file_is_initialised(filename):
-    if not os.path.isfile(filename):
-        initialise_file(filename)
 
 def get_command_line_options():
     '''Sets up optparse and command line options'''
     usage = "Usage: %prog [options] url"
     parser = OptionParser(usage=usage)
-    parser.add_option("-t","--log-response-time", action="store_true",
-            dest="log_response_time",
-            help="Turn on logging for response times")
-
-    parser.add_option("-r","--alert-on-slow-response", action="store_true",
-            help="Turn on alerts for response times")
-
-    parser.add_option("-g","--use-gmail", action="store_true", dest="use_gmail",
-            help="Send email with Gmail.  Must also specify username and password")
-
-    parser.add_option("--smtp-hostname", dest="smtp_hostname",
-            help="Set the stmp server host.")
-
-    parser.add_option("--smtp-port", dest="smtp_port", type="int",
-            help="Set the smtp server port.")
-
-    parser.add_option("-u","--smtp-username", dest="smtp_username",
-            help="Set the smtp username.")
-
-    parser.add_option("-p","--smtp-password", dest="smtp_password",
-            help="Set the smtp password.")
-
-    parser.add_option("-s","--from-addr", dest="from_addr",
-            help="Set the from email.")
-    
-    parser.add_option("-d","--to-addrs", dest="to_addrs", action="append",
-            help="List of email addresses to send alerts to.")
-
-    parser.add_option("-f","--from-file", dest="from_file",
-            help="Import urls from a text file. Separated by newline.")
 
     return parser.parse_args()
+
+fieldnames = ['datetime',
+              'internet was reachable',
+              'status',
+              'response time',
+              'elapsed time since measurement started',
+              'uptime since measurement started',
+              'availability since measurement started',
+              'time since last state change']
+
+def get_statuses(statuses, url):
+    statuses['datetime'] = datetime.datetime.now().isoformat()
+    statuses['internet was reachable'] = is_internet_reachable()
+    startTime = time.time()
+    site_status = get_site_status(url)
+    statuses['site status'] = site_status
+    statuses['response time'] = time.time() - startTime if site_status == "up" else -1
+
+def calculate_statistics(statuses, previous_statuses):
+    if previous_statuses == None:
+        statuses['elapsed time since measurement started'] = -1
+        statuses['uptime since measurement started'] = -1
+        statuses['availability since measurement started'] = -1
+        statuses['time since last state change'] = -1
+    else:
+        statuses['elapsed time since measurement started']
+        statuses['uptime since measurement started']
+        statuses['availability since measurement started']
+        statuses['time since last state change']
+        
 
 def main():
 
@@ -196,26 +149,30 @@ def main():
     url = normalize_url(args[0])
     statsfile = add_extension(args[1])
 
-    # Change logging from WARNING to INFO when logResponseTime option is set
-    # so we can log response times as well as status changes.
-    if options.log_response_time:
-        logging.basicConfig(level=logging.INFO, filename='checksites.log',
-                format='%(asctime)s %(levelname)s: %(message)s',
-                datefmt='%Y-%m-%d %H:%M:%S')
-    else:
-        logging.basicConfig(level=logging.WARNING, filename='checksites.log',
-                format='%(asctime)s %(levelname)s: %(message)s',
-                datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(level=logging.WARNING, filename='checksites.log',
+        format='%(asctime)s %(levelname)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S')
 
-    # Check sites only if Internet is_available
-    if is_internet_reachable():
-        status, elapsedTime, urlfile = check_site_status(url)
-        print status, elapsedTime, urlfile
-        with open(statsfile, 'wb') as csvfile:
-            ensure_file_is_initialised(csvfile)
-            update_file(csvfile, status, elapsedTime)
-    else:
-        logging.error('Either the world ended or we are not connected to the net.')
+    # Get statuses
+    statuses = OrderedDict()
+    get_statuses(statuses, url)
+    for k, v in statuses.iteritems():
+        print '{0}: {1}'.format(k, v)
+
+    # open the file
+    with open(statsfile, 'rwb') as csvfile:
+        # Read out the existing rows using a DictReader
+        dr = csv.DictReader(csvfile)
+        rows = list(dr)
+        numrows = len(rows)
+        print 'numrows = {0}'.format(numrows)
+
+        # If there is a previous row, calculate the new row
+
+        # Else calculate the first row
+
+        # Write all rows to the file 
+
 
 if __name__ == '__main__':
     # First arg is script name, skip it

@@ -55,18 +55,22 @@ def get_headers(url):
     except:
         return 'Headers unavailable'
 
+def check_site_status(url):
+    startTime = time.time()
+    status, urlfile = get_site_status(url)
+    endTime = time.time()
+    elapsedTime = endTime - startTime
+
+    if status != "up": elapsedTime = -1
+
+    return status, elapsedTime, urlfile
+
+
 def compare_site_status(prev_results): #, alerter):
     '''Report changed status based on previous results'''
 
     def is_status_changed(url):
-        startTime = time.time()
-        status, urlfile = get_site_status(url)
-        endTime = time.time()
-        elapsedTime = endTime - startTime
-        msg = "%s took %s" % (url,elapsedTime)
-        logging.info(msg)
-        
-        if status != "up": elapsedTime = -1
+        status, elapsedTime, urlfile = check_site_status(url)
         
         friendly_status = '%s is %s. Response time: %s' % (url, status, elapsedTime)
         print friendly_status

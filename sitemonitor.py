@@ -7,7 +7,6 @@ from optparse import OptionParser, OptionValueError
 from smtplib import SMTP
 from getpass import getuser
 from socket import gethostname
-from collections import OrderedDict
 
 
 def generate_email_alerter(to_addrs, from_addr=None, use_gmail=False,
@@ -56,16 +55,6 @@ def get_headers(url):
     except:
         return 'Headers unavailable'
 
-def check_site_status(url):
-    startTime = time.time()
-    status = get_site_status(url)
-    endTime = time.time()
-    elapsedTime = endTime - startTime
-
-    if status != "up": elapsedTime = -1
-
-    return status, elapsedTime
-
 def is_internet_reachable():
     '''Checks Google then Yahoo just in case one is down'''
     statusGoogle, urlfileGoogle = get_site_status('http://www.google.com')
@@ -105,34 +94,39 @@ def get_command_line_options():
 
     return parser.parse_args()
 
-fns = ['datetime',
-              'internet was reachable',
-              'status',
-              'response time',
-              'elapsed time since measurement started',
-              'uptime since measurement started',
-              'availability since measurement started',
-              'time since last state change']
+fieldnames = [ 'datetime',
+        'internet was reachable',
+        'status',
+        'response time',
+        'elapsed time since measurement started',
+        'uptime since measurement started',
+        'availability since measurement started',
+        'time since last state change']
 
 def get_statuses(statuses, url):
-    statuses['datetime'] = datetime.datetime.now().isoformat()
-    statuses['internet was reachable'] = is_internet_reachable()
+    # datetime
+    statuses.append(datetime.datetime.now().isoformat())
+    # internet was reachable
+    statuses.append(is_internet_reachable())
+
     startTime = time.time()
-    site_status = get_site_status(url)
-    statuses['site status'] = site_status
-    statuses['response time'] = time.time() - startTime if site_status == "up" else -1
+    siteStatus = get_site_status(url)
+    elapsedTime = time.time() - startTime
+
+    # status
+    statuses.append(siteStatus)
+    # response time
+    statuses.append(elapsedTime if siteStatus == "up" else -1)
 
 def calculate_statistics(statuses, previous_statuses):
-    if previous_statuses == None:
-        statuses['elapsed time since measurement started'] = -1
-        statuses['uptime since measurement started'] = -1
-        statuses['availability since measurement started'] = -1
-        statuses['time since last state change'] = -1
-    else:
-        statuses['elapsed time since measurement started']
-        statuses['uptime since measurement started']
-        statuses['availability since measurement started']
-        statuses['time since last state change']
+    # 'elapsed time since measurement started',
+    statuses.append(0.0)
+    # 'uptime since measurement started',
+    statuses.append(0.0)
+    # 'availability since measurement started',
+    statuses.append(0.0)
+    # 'time since last state change']
+    statuses.append(0.0)
         
 
 def main():
@@ -154,33 +148,37 @@ def main():
         datefmt='%Y-%m-%d %H:%M:%S')
 
     # Get statuses
-    statuses = OrderedDict()
+    statuses = []
     get_statuses(statuses, url)
-    for k, v in statuses.iteritems():
-        print '{0}: {1}'.format(k, v)
 
-    # open the file
-    existing_rows = None
+    # Get any existing rows from the file if it exists...
+    rows = []
     if os.path.isfile(statsfile):
         with open(statsfile, 'rb') as csvfile:
             # Read out the existing rows using a DictReader
-            dr = csv.DictReader(csvfile)
-            existing_rows = list(dr)
+            dr = csv.reader(csvfile)
+            rows = list(dr)
 
-    # If there is a previous row, calculate the new row...
-    if existing_rows != None:
-        numrows = len(existing_rows)
-        print 'numrows = {0}'.format(numrows)
-        if numrows > 0:
-            print existing_rows[0]
-    # Otherwise create the file...
+    # If there are any existing rows, choose the last one as the previous_statues...
+    numrows = len(rows)
+    previous_statuses = None
+    if numrows > 1:
+        previous_statuses = rows[len(rows) - 1]
+    # Otherwise initialise the rows list...
     else:
-        with open(statsfile, 'wb') as csvfile:
-            dw = csv.DictWriter(csvfile, delimiter=',', filenames=fns)
-            dw.writerow(fns)
-            dw.writerow(statuses)
+        rows.append(fieldnames)
+
+    # Calculate the statistics for the new row...
+    calculate_statistics(statuses, previous_statuses)
+
+    # Append the new row...
+    rows.append(statuses)
 
     # Write all rows to the file 
+    with open(statsfile, 'wb') as csvfile:
+        dw = csv.writer(csvfile)
+        for row in rows:
+          dw.writerow(row)
 
 
 if __name__ == '__main__':

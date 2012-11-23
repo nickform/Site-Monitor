@@ -105,7 +105,7 @@ def get_command_line_options():
 
     return parser.parse_args()
 
-fieldnames = ['datetime',
+fns = ['datetime',
               'internet was reachable',
               'status',
               'response time',
@@ -160,18 +160,27 @@ def main():
         print '{0}: {1}'.format(k, v)
 
     # open the file
-    with open(statsfile, 'rwb') as csvfile:
-        # Read out the existing rows using a DictReader
-        dr = csv.DictReader(csvfile)
-        rows = list(dr)
-        numrows = len(rows)
+    existing_rows = None
+    if os.path.isfile(statsfile):
+        with open(statsfile, 'rb') as csvfile:
+            # Read out the existing rows using a DictReader
+            dr = csv.DictReader(csvfile)
+            existing_rows = list(dr)
+
+    # If there is a previous row, calculate the new row...
+    if existing_rows != None:
+        numrows = len(existing_rows)
         print 'numrows = {0}'.format(numrows)
+        if numrows > 0:
+            print existing_rows[0]
+    # Otherwise create the file...
+    else:
+        with open(statsfile, 'wb') as csvfile:
+            dw = csv.DictWriter(csvfile, delimiter=',', filenames=fns)
+            dw.writerow(fns)
+            dw.writerow(statuses)
 
-        # If there is a previous row, calculate the new row
-
-        # Else calculate the first row
-
-        # Write all rows to the file 
+    # Write all rows to the file 
 
 
 if __name__ == '__main__':

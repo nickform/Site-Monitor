@@ -1,5 +1,4 @@
-data.pkl
-checksites.log
 *.swp
 *.pyc
 *.csv
+.c9revisions/

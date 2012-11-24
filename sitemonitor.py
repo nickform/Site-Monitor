@@ -129,19 +129,23 @@ def calculate_statistics(statuses, previous_statuses):
     statuses.append(0.0)
         
 
-def main():
+def main(url=None, filename=None):
 
-    # Get argument flags and command options
-    (options,args) = get_command_line_options()
+    if url == None:
+        # Get argument flags and command options
+        (options,args) = get_command_line_options()
     
-    # Print out usage if no arguments are present
-    if len(args) != 2:
-        print 'Usage:'
-        print "\tPlease specify a single url followed by the name of the file to log status to."
-        return
+        # Print out usage if no arguments are present
+        if len(args) != 2:
+            print 'Usage:'
+            print "\tPlease specify a single url followed by the name of the file to log status to."
+            return
+        
+        url = args[0]
+        filename = args[1]
 
-    url = normalize_url(args[0])
-    statsfile = add_extension(args[1])
+    url = normalize_url(url)
+    filename = add_extension(filename)
 
     logging.basicConfig(level=logging.WARNING, filename='checksites.log',
         format='%(asctime)s %(levelname)s: %(message)s',
@@ -153,8 +157,8 @@ def main():
 
     # Get any existing rows from the file if it exists...
     rows = []
-    if os.path.isfile(statsfile):
-        with open(statsfile, 'rb') as csvfile:
+    if os.path.isfile(filename):
+        with open(filename, 'rb') as csvfile:
             # Read out the existing rows using a DictReader
             dr = csv.reader(csvfile)
             rows = list(dr)
@@ -175,7 +179,7 @@ def main():
     rows.append(statuses)
 
     # Write all rows to the file 
-    with open(statsfile, 'wb') as csvfile:
+    with open(filename, 'wb') as csvfile:
         dw = csv.writer(csvfile)
         for row in rows:
           dw.writerow(row)

@@ -2,7 +2,7 @@
 
 # sample usage: checksites.py eriwen.com nixtutor.com yoursite.org
 
-import os, sys, logging, time, urllib2, re, csv, datetime
+import os, sys, logging, time, urllib2, re, csv
 from optparse import OptionParser, OptionValueError
 from smtplib import SMTP
 from getpass import getuser
@@ -94,7 +94,7 @@ def get_command_line_options():
 
     return parser.parse_args()
 
-fieldnames = [ 'datetime',
+fieldnames = [ 'time',
         'internet was reachable',
         'status',
         'response time',
@@ -104,8 +104,8 @@ fieldnames = [ 'datetime',
         'time since last state change']
 
 def get_statuses(statuses, url):
-    # datetime
-    statuses.append(datetime.datetime.now().isoformat())
+    # time
+    statuses.append(time.time())
     # internet was reachable
     statuses.append(is_internet_reachable())
 
@@ -119,15 +119,27 @@ def get_statuses(statuses, url):
     statuses.append(elapsedTime if siteStatus == "up" else -1)
 
 def calculate_statistics(statuses, previous_statuses):
-    # 'elapsed time since measurement started',
-    statuses.append(0.0)
-    # 'uptime since measurement started',
-    statuses.append(0.0)
-    # 'availability since measurement started',
-    statuses.append(0.0)
-    # 'time since last state change']
-    statuses.append(0.0)
-        
+    if previous_statuses == None:
+        # 'elapsed time since measurement started',
+        statuses.append(0.0)
+        # 'uptime since measurement started',
+        statuses.append(0.0)
+        # 'availability since measurement started',
+        statuses.append(0.0)
+        # 'time since last state change']
+        statuses.append(0.0)
+    else:
+        time_interval = statuses[0] - float(previous_statuses[0])
+        state_transition_in_interval = statuses[2] != previous_statuses[2]
+        uptime_in_interval = time_interval if ((not state_transition_in_interval) and statuses[2] == 'up') else 0.0
+        # 'elapsed time since measurement started',
+        statuses.append(float(previous_statuses[4]) + time_interval)
+        # 'uptime since measurement started',
+        statuses.append(float(previous_statuses[5]) + uptime_in_interval)
+        # 'availability since measurement started',
+        statuses.append(statuses[5] / statuses[4])
+        # 'time since last state change'
+        statuses.append(0.0 if state_transition_in_interval else float(previous_statuses[7]) + time_interval)
 
 def main(url=None, filename=None):
 

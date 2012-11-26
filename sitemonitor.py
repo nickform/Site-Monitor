@@ -8,6 +8,7 @@ from smtplib import SMTP
 from getpass import getuser
 from socket import gethostname
 
+TIMEOUT_IN_SECONDS = 60
 
 def generate_email_alerter(to_addrs, from_addr=None, use_gmail=False,
         username=None, password=None, hostname=None, port=25):
@@ -40,7 +41,7 @@ def generate_email_alerter(to_addrs, from_addr=None, use_gmail=False,
 
 def get_site_status(url):
     try:
-        urlfile = urllib2.urlopen(url);
+        urlfile = urllib2.urlopen(url, timeout=TIMEOUT_IN_SECONDS);
         status_code = urlfile.code
         if status_code in (200,302):
             return 'up'
@@ -51,7 +52,7 @@ def get_site_status(url):
 def get_headers(url):
     '''Gets all headers from URL request and returns'''
     try:
-        return urllib2.urlopen(url).info().headers
+        return urllib2.urlopen(url, timeout=TIMEOUT_IN_SECONDS).info().headers
     except:
         return 'Headers unavailable'
 

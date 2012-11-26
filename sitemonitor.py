@@ -116,7 +116,10 @@ def get_statuses(statuses, url):
     # status
     statuses.append(siteStatus)
     # response time
-    statuses.append(elapsedTime if siteStatus == "up" else -1)
+    if siteStatus == "up":
+      statuses.append(elapsedTime)
+    else:
+      statuses.append(-1)
 
 def calculate_statistics(statuses, previous_statuses):
     if previous_statuses == None:
@@ -129,9 +132,19 @@ def calculate_statistics(statuses, previous_statuses):
         # 'time since last state change']
         statuses.append(0.0)
     else:
+        # Do calculations
         time_interval = statuses[0] - float(previous_statuses[0])
         state_transition_in_interval = statuses[2] != previous_statuses[2]
-        uptime_in_interval = time_interval if ((not state_transition_in_interval) and statuses[2] == 'up') else 0.0
+        if ((not state_transition_in_interval) and statuses[2] == 'up'):
+          uptime_in_interval = time_interval 
+        else:
+          uptime_in_interval = 0.0 
+        if state_transition_in_interval:
+          time_since_state_change = 0.0
+        else:
+          time_since_state_change = float(previous_statuses[7]) + time_interval
+
+        # Append to statuses array...
         # 'elapsed time since measurement started',
         statuses.append(float(previous_statuses[4]) + time_interval)
         # 'uptime since measurement started',
@@ -139,7 +152,7 @@ def calculate_statistics(statuses, previous_statuses):
         # 'availability since measurement started',
         statuses.append(statuses[5] / statuses[4])
         # 'time since last state change'
-        statuses.append(0.0 if state_transition_in_interval else float(previous_statuses[7]) + time_interval)
+        statuses.append(time_since_state_change)
 
 def main(url=None, filename=None):
 

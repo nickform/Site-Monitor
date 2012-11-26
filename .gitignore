@@ -1,4 +1,5 @@
 *.swp
 *.pyc
 *.csv
+*.log
 .c9revisions/

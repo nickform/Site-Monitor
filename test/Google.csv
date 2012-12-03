@@ -1,0 +1,4 @@
+time,internet was reachable,status,response time,elapsed time since measurement started,uptime since measurement started,availability since measurement started,time since last state change
+1353947459.07,True,down,-1,0.0,0.0,0.0,0.0
+1353947467.67,True,up,0.444430828094,8.59905195236,0.0,0.0,0.0
+1353947552.94,True,up,0.435257196426,93.8710999489,85.2720479965,0.908395108217,85.2720479965
